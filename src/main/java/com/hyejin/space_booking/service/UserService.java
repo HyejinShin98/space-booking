@@ -89,6 +89,7 @@ public class UserService {
         form.add("redirect_uri", KAKAO_LOGIN_REDIRECT_URI);
         form.add("code", code);
 
+        //
         Map<String, Object> token = client.post()
                 .uri("https://kauth.kakao.com/oauth/token")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
