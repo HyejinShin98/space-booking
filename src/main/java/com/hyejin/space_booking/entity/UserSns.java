@@ -10,32 +10,42 @@ import java.time.LocalDateTime;
 /**
  * 회원 SNS 연동정보
  */
-@Entity @Table(name="user_sns")
+@Entity
+@Table(
+        name = "user_sns",
+        uniqueConstraints = {
+            @UniqueConstraint(name = "uk_user_sns_provider_uid", columnNames = {"provider", "provider_user_id"})
+            ,@UniqueConstraint(name = "uk_user_sns_user_key", columnNames = {"user_key"}) // 1:1만 허용
+        },
+        indexes = {
+            @Index(name = "ix_user_sns_user_key", columnList = "user_key")
+        }
+)
 @Getter @Setter @NoArgsConstructor
 public class UserSns {
-    @Id
-    @Column(name="user_sns_id")
-    @GeneratedValue(strategy = GenerationType.IDENTITY)  // AUTO_INCREMENT
-    private Integer userSnsId;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_sns_id")
+    private Long userSnsId;
+
+    // FK는 이제 user_key로
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_key", referencedColumnName = "user_key", nullable = false)
     private User user;
 
-    @Column(name="sns_gubn", nullable = false)
-    private String snsGubn; // 네이버:NAVER / 카카오:KAKAO
+    @Column(name = "provider", nullable = false, length = 32)
+    private String provider; // KAKAO, NAVER 등
 
-    @Column(name="sns_key", nullable = true)
-    private String snsKey;
+    @Column(name = "provider_user_id", nullable = false, length = 128)
+    private String providerUserId;
 
-    @Column(name="access_token", nullable = true)
+    @Column(name = "access_token", length = 2048)
     private String accessToken;
 
-    @Column(name="refresh_token", nullable = true)
+    @Column(name = "refresh_token", length = 2048)
     private String refreshToken;
 
-    @Column(name="reg_date", insertable=false, updatable=false, nullable = false)
+    @Column(name = "reg_date", insertable = false, updatable = false)
     private LocalDateTime regDate;
-
-
 }

@@ -4,10 +4,12 @@ import com.hyejin.space_booking.api.ApiResponse;
 import com.hyejin.space_booking.api.request.SignupBasicRequest;
 import com.hyejin.space_booking.entity.User;
 import com.hyejin.space_booking.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.apache.catalina.connector.Request;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,12 +46,11 @@ public class UserController {
      * 2)응답값
      */
     @GetMapping("/kakaoLoginCallback")
-    public ResponseEntity<ApiResponse<?>> kakaoLoginCallback(
+    public ResponseEntity<?> kakaoLoginCallback(
                 @RequestParam String code,
                 @RequestParam(required = false) String state,
-                HttpSession session) {
-        Map<String, Object> result = userService.kakaoLoginCallback(code, state, session);
-        return ResponseEntity.ok(ApiResponse.success("카카오 로그인 성공", result));
+                HttpServletRequest request) {
+        return userService.handleKakaoCallback(code, state, request);
     }
 
 }

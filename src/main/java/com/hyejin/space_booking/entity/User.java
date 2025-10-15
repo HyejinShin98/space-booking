@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.cglib.core.Local;
 
 import java.time.LocalDateTime;
 
@@ -14,7 +15,13 @@ import java.time.LocalDateTime;
 @Getter @Setter @NoArgsConstructor
 public class User {
     @Id
-    @Column(name="user_id")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_key")
+    private Long userKey;
+
+    // 로그인 아이디
+    // 소셜연동 - 소셜+소셜아이디 -> ex) KAKAO12345
+    @Column(name = "user_id", unique = true, nullable = false)
     private String userId;
 
     @Column(name="user_pw", nullable = false)
@@ -38,8 +45,17 @@ public class User {
     @Column(name="upt_date", insertable=false, updatable=false, nullable = true)
     private LocalDateTime uptDate;
 
+    @Column(name = "first_login_date", nullable = false)
+    private LocalDateTime firstLoginDate; // 최초 로그인일자
+
+    @Column(name = "last_login_date", nullable = false)
+    private LocalDateTime lastLoginDate; // 최종 로그인일자
+
     @Column(name="use_yn", nullable = false, length=1)
     private String useYn;
+
+    @Column(name="remarks", nullable = true)
+    private String remarks;
 
     // SNS 연동정보
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
