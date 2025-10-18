@@ -9,12 +9,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.apache.catalina.connector.Request;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -36,7 +34,7 @@ public class UserController {
      * 1)카카오로 리다이렉트
      */
     @GetMapping("/kakaoLogin")
-    public ResponseEntity<ApiResponse<User>> kakaoLogin(HttpServletResponse response, HttpSession session) throws IOException {
+    public ResponseEntity<ApiResponse<Void>> kakaoLogin(HttpServletResponse response, HttpSession session) throws IOException {
         userService.kakaoLogin(response, session);
         return ResponseEntity.ok(ApiResponse.success("카카오 로그인 리다이렉트"));
     }

@@ -27,6 +27,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import static com.hyejin.space_booking.util.TypeCast.*;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -129,23 +131,6 @@ public class KakaoService {
         } catch (RestClientException e) {
             throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_GATEWAY, "kakao userinfo request failed");
         }
-    }
-
-    // --------- helpers ---------
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> asMap(Object o) {
-        return (o instanceof Map<?,?> m) ? (Map<String, Object>) m : Map.of();
-    }
-    private String asString(Object o) { return o == null ? null : String.valueOf(o); }
-    private Long asLong(Object o) {
-        if (o == null) return null;
-        if (o instanceof Number n) return n.longValue();
-        try { return Long.parseLong(o.toString()); } catch (Exception e) { return null; }
-    }
-    private Boolean asBoolean(Object o) {
-        if (o == null) return null;
-        if (o instanceof Boolean b) return b;
-        return Boolean.parseBoolean(o.toString());
     }
 
 }

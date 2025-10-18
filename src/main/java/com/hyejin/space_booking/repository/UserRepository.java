@@ -8,10 +8,14 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-public interface UserRepository extends JpaRepository<User,String> {
+public interface UserRepository extends JpaRepository<User,Long> {
 
-    /* 이메일 중복체크 */
+    /** 이메일로 회원 조회 */
     Optional<User> findByEmail(String email);
+    /** 회원아이디 존재여부 */
+    boolean existsByUserId(String userId);
+    /** 회원이메일 존재여부 */
+    boolean existsByEmail(String email);
 
     /**
      * 아이디로 회원 조회
@@ -29,6 +33,21 @@ public interface UserRepository extends JpaRepository<User,String> {
             @Param("userId") String userId,
             @Param("useYn") String useYn
     );
+
+    /**
+     * 이메일로 회원 소셜연동 정보 조회
+     *      - useYn 'Y'일 경우
+     *      - 소셜연동 정보 있는 회원만 조회
+     */
+    @Query("""
+          select distinct u
+          from User u
+          join fetch u.userSns s
+          where u.useYn = 'Y'
+            and u.email is not null
+            and u.email = :email
+        """)
+    Optional<User> findActiveWithSnsByEmail(@Param("email") String email);
 
 
 }

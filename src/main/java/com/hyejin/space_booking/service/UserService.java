@@ -1,6 +1,8 @@
 package com.hyejin.space_booking.service;
 
 import com.hyejin.space_booking.api.request.SignupBasicRequest;
+import com.hyejin.space_booking.common.ApiException;
+import com.hyejin.space_booking.common.ErrorCode;
 import com.hyejin.space_booking.entity.*;
 import com.hyejin.space_booking.repository.UserRepository;
 import com.hyejin.space_booking.repository.UserSnsRepository;
@@ -24,6 +26,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
+
 import static com.hyejin.space_booking.util.StringUtils.*;
 
 @Service
@@ -41,20 +44,34 @@ public class UserService {
      */
     @Transactional
     public User signup(SignupBasicRequest req) {
-        // 아이디 중복체크
-        Optional<User> existsUser = userRepository.findUser(req.userId(), null);
-        if (existsUser.isPresent()) {
-            throw new IllegalArgumentException("이미 존재하는 아이디입니다.");
+        final String userId = req.userId().trim();
+        final String email  = req.email() == null ? null : req.email().trim().toLowerCase();
+
+        // 1) 아이디 중복체크
+        if (userRepository.existsByUserId(userId)) {
+            throw new ApiException(ErrorCode.DUPLICATE_USER_ID);
         }
 
+        // 2) 이메일 소셜 연동 존재 (활성만 볼 건지 비활성 포함할 건지는 정책대로)
+        userRepository.findActiveWithSnsByEmail(email).ifPresent(user -> {
+            throw new ApiException(ErrorCode.SOCIAL_ACCOUNT_EXISTS);
+        });
+
+        // 3) 로컬 계정 이메일 중복
+        if (userRepository.existsByEmail(email)) {
+            throw new ApiException(ErrorCode.DUPLICATE_EMAIL);
+        }
+
+        // 4) 생성
         User user = new User();
-        user.setUserId(req.userId());
-        user.setUserPw(passwordEncoder.encode(req.userPw())); // 비밀번호 암호화
-        user.setEmail(req.email());
+        user.setUserId(userId);
+        user.setUserPw(passwordEncoder.encode(req.userPw()));
+        user.setEmail(email);
         user.setName(req.name());
         user.setBirthDate(req.birthDate());
         user.setPhoneNum(req.phoneNum());
         user.setUseYn("Y");
+        // user.setEmailVerified(false);
         return userRepository.save(user);
     }
 
@@ -117,11 +134,11 @@ public class UserService {
         final String email = safeNull(profile.email());
         final LocalDateTime now = LocalDateTime.now();
 
-        // 1) provider + providerUserId로 기존 연동 조회 (user까지 로딩되는 메서드 사용 권장)
+        // 1) provider + providerUserId로 기존 연동 조회
         Optional<UserSns> optSns = userSnsRepository.findByProviderAndProviderUserId(provider, providerUid);
 
         if (optSns.isPresent()) {
-            // 기존 연동 있음 → 업데이트
+            // 기존 연동 있음 -> 업데이트
             UserSns sns = optSns.get();
             User user = sns.getUser();
 
@@ -138,11 +155,11 @@ public class UserService {
             return userRepository.save(user);
         }
 
-        // 2) 연동 없음: 이메일로 기존 유저 매칭 시도
+        // 2) 연동 없음: 이메일로 기존 유저 매칭
         User user = (isNotBlank(email)) ? userRepository.findByEmail(email).orElse(null) : null;
 
         if (user == null) {
-            // 3) 유저 신규
+            // 3) 신규유저
             user = new User();
             user.setUserId("KAKAO_" + providerUid);
             user.setEmail(email);
@@ -155,7 +172,7 @@ public class UserService {
             user = userRepository.save(user);
         }
 
-        // 4) UserSns 신규 생성 후 1:1로 연결
+        // 4) UserSns 신규 생성 후 1:1 연결
         UserSns sns = new UserSns();
         sns.setUser(user);
         sns.setProvider(provider);
