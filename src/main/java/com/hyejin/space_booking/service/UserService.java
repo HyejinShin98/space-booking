@@ -1,11 +1,9 @@
 package com.hyejin.space_booking.service;
 
 import com.hyejin.space_booking.api.request.SignupBasicRequest;
-import com.hyejin.space_booking.entity.JwtPair;
-import com.hyejin.space_booking.entity.KakaoProfile;
-import com.hyejin.space_booking.entity.KakaoToken;
-import com.hyejin.space_booking.entity.User;
+import com.hyejin.space_booking.entity.*;
 import com.hyejin.space_booking.repository.UserRepository;
+import com.hyejin.space_booking.repository.UserSnsRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -24,13 +22,16 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.*;
+import static com.hyejin.space_booking.util.StringUtils.*;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class UserService {
     private final UserRepository userRepository;
+    private final UserSnsRepository userSnsRepository;
     private final PasswordEncoder passwordEncoder;
     private final KakaoService kakaoService;
     private final JwtService jwtService;
@@ -84,21 +85,20 @@ public class UserService {
         KakaoToken token = kakaoService.exchangeCode(code);
         KakaoProfile profile = kakaoService.getProfile(token.accessToken());
 
-        // 3) TODO: 업서트
-//        User user = upsertFromKakao(profile, token);
+        // 3) 유저정보 업서트
+        User user = upsertFromKakao(profile, token);
 
         // 4) JWT 발급
-//        JwtPair jwt = jwtService.issue(user.getId(), "KAKAO", profile.providerUserId());
-        JwtPair jwt = jwtService.issue(1L, "KAKAO", profile.providerUserId());
+        JwtPair jwt = jwtService.issue(user.getUserKey(), "KAKAO", profile.providerUserId());
 
         // 5) 응답
         return ResponseEntity.ok()
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.accessToken())
                 .body(Map.of(
                         "message", "로그인 성공",
-//                        "userId", user.getId(),
-//                        "nickname", user.getRemarks(),
-                        "userId", profile.providerUserId(),
+                        "userKey", user.getUserKey(),
+                        "userId", user.getUserId(),
+                        "provider", profile.providerUserId(),
                         "nickname", profile.nickname(),
                         "expiresIn", jwt.accessTokenTtlSeconds()
                 ));
@@ -110,69 +110,69 @@ public class UserService {
      * 2) 없으면 email로 기존 유저 매칭 후 소셜 연동
      * 3) 그것도 없으면 신규 생성
      */
-
-    /*
     @Transactional
     public User upsertFromKakao(KakaoProfile profile, KakaoToken token) {
         final String provider = "KAKAO";
         final String providerUid = profile.providerUserId();
         final String email = safeNull(profile.email());
+        final LocalDateTime now = LocalDateTime.now();
 
-        // 1) provider + providerUserId로 조회
-        User user = userRepository.findByProviderAndProviderUserId(provider, providerUid)
-                .orElse(null);
+        // 1) provider + providerUserId로 기존 연동 조회 (user까지 로딩되는 메서드 사용 권장)
+        Optional<UserSns> optSns = userSnsRepository.findByProviderAndProviderUserId(provider, providerUid);
 
-        if (user == null && email != null && !email.isBlank()) {
-            // 2) 이메일로 기존 계정 찾기(이전에 로컬 가입했거나 다른 소셜)
-            user = userRepository.findByEmail(email).orElse(null);
-        }
+        if (optSns.isPresent()) {
+            // 기존 연동 있음 → 업데이트
+            UserSns sns = optSns.get();
+            User user = sns.getUser();
 
-        LocalDateTime now = LocalDateTime.now();
+            // 토큰/프로필 최신화
+            sns.setAccessToken(coalesce(token.accessToken(), sns.getAccessToken()));
+            sns.setRefreshToken(coalesce(token.refreshToken(), sns.getRefreshToken()));
+            sns.setNickname(coalesce(profile.nickname(), sns.getNickname()));
+            sns.setProfileImageUrl(coalesce(profile.profileImageUrl(), sns.getProfileImageUrl()));
 
-        if (user == null) {
-            // 3) 신규 생성
-            user = new User();
-            user.setProvider(provider);
-            user.setProviderUserId(providerUid);
+            if (isNotBlank(email)) user.setEmail(email);
+            user.setLastLoginDate(now);
 
-            // 로컬용 userId는 소셜 신규에선 비워도 되지만, 운영 로그/식별 편의로 임시값 생성 가능
-            user.setUserId("kakao_" + providerUid);
-
-            user.setEmail(email);
-            user.setEmailVerified(profile.emailVerified());
-
-            user.setNickname(fallbackNickname(profile.nickname(), providerUid));
-            user.setProfileImageUrl(profile.profileImageUrl());
-
-            user.setFirstLoginAt(now);
-            user.setLastLoginAt(now);
+            userSnsRepository.save(sns);
             return userRepository.save(user);
         }
 
-        // 기존 유저 업데이트(프로필/이메일 최신화)
-        if (user.getProvider() == null) user.setProvider(provider);
-        if (user.getProviderUserId() == null) user.setProviderUserId(providerUid);
+        // 2) 연동 없음: 이메일로 기존 유저 매칭 시도
+        User user = (isNotBlank(email)) ? userRepository.findByEmail(email).orElse(null) : null;
 
-        // 최신 값 덮어쓰기. 닉네임/이미지 비어있을 때만 갱신하고 싶으면 조건 걸면 됨.
-        user.setNickname(coalesce(profile.nickname(), user.getNickname()));
-        user.setProfileImageUrl(coalesce(profile.profileImageUrl(), user.getProfileImageUrl()));
-
-        if (email != null && !email.isBlank()) {
+        if (user == null) {
+            // 3) 유저 신규
+            user = new User();
+            user.setUserId("KAKAO_" + providerUid);
             user.setEmail(email);
-            user.setEmailVerified(Boolean.TRUE.equals(profile.emailVerified()));
+            user.setFirstLoginDate(now);
+            user.setLastLoginDate(now);
+            user.setUseYn("Y");
+            user = userRepository.save(user);
+        } else {
+            user.setLastLoginDate(now);
+            user = userRepository.save(user);
         }
 
-        user.setLastLoginAt(now);
-        return userRepository.save(user);
-    }
-     */
+        // 4) UserSns 신규 생성 후 1:1로 연결
+        UserSns sns = new UserSns();
+        sns.setUser(user);
+        sns.setProvider(provider);
+        sns.setProviderUserId(providerUid);
+        sns.setNickname(fallbackNickname(profile.nickname(), providerUid));
+        sns.setProfileImageUrl(profile.profileImageUrl());
+        sns.setAccessToken(token.accessToken());
+        sns.setRefreshToken(token.refreshToken());
+        sns = userSnsRepository.save(sns);
 
-    private String fallbackNickname(String nickname, String providerUid) {
-        if (nickname != null && !nickname.isBlank()) return nickname;
-        return "kakao_user_" + providerUid.substring(0, Math.min(8, providerUid.length()));
+        user.setUserSns(sns);
+        return user;
+
+
+
     }
-    private String coalesce(String a, String b) { return (a != null && !a.isBlank()) ? a : b; }
-    private String safeNull(String s) { return s == null ? null : s.trim(); }
+
 }
 
 

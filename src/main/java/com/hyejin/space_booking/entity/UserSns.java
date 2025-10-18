@@ -30,15 +30,21 @@ public class UserSns {
     private Long userSnsId;
 
     // FK는 이제 user_key로
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_key", referencedColumnName = "user_key", nullable = false)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_key", referencedColumnName = "user_key", nullable = false, unique = true)
     private User user;
 
-    @Column(name = "provider", nullable = false, length = 32)
-    private String provider; // KAKAO, NAVER 등
+    @Column(name = "provider", nullable = false)
+    private String provider; // 소셜명 KAKAO, NAVER
 
-    @Column(name = "provider_user_id", nullable = false, length = 128)
-    private String providerUserId;
+    @Column(name = "provider_user_id", nullable = false)
+    private String providerUserId; // 소셜아이디 key
+
+    @Column(name = "nickname", nullable = false)
+    private String nickname; // 소셜닉네임
+
+    @Column(name = "profile_image_url", nullable = false)
+    private String profileImageUrl; // 프로필이미지
 
     @Column(name = "access_token", length = 2048)
     private String accessToken;
