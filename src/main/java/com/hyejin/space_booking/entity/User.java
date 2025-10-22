@@ -1,9 +1,12 @@
 package com.hyejin.space_booking.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Generated;
+import org.hibernate.annotations.GenerationTime;
 import org.springframework.cglib.core.Local;
 
 import java.time.LocalDateTime;
@@ -39,16 +42,23 @@ public class User {
     @Column(name="phone_num", nullable = false)
     private String phoneNum; // 휴대폰번호
 
+
+    @Generated(GenerationTime.INSERT)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Column(name="reg_date", insertable=false, updatable=false, nullable = false)
     private LocalDateTime regDate;
 
+    @Generated(GenerationTime.ALWAYS)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Column(name="upt_date", insertable=false, updatable=false, nullable = true)
     private LocalDateTime uptDate;
 
     @Column(name = "first_login_date", nullable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime firstLoginDate; // 최초 로그인일자
 
     @Column(name = "last_login_date", nullable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime lastLoginDate; // 최종 로그인일자
 
     @Column(name="use_yn", nullable = false, length=1)

@@ -1,9 +1,12 @@
 package com.hyejin.space_booking.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Generated;
+import org.hibernate.annotations.GenerationTime;
 
 import java.time.LocalDateTime;
 
@@ -52,6 +55,8 @@ public class UserSns {
     @Column(name = "refresh_token", length = 2048)
     private String refreshToken;
 
+    @Generated(GenerationTime.INSERT)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Column(name = "reg_date", insertable = false, updatable = false)
     private LocalDateTime regDate;
 }

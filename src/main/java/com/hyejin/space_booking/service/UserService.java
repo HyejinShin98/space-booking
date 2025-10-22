@@ -1,6 +1,10 @@
 package com.hyejin.space_booking.service;
 
+import com.hyejin.space_booking.api.ApiResponse;
+import com.hyejin.space_booking.api.request.BasicLoginRequest;
 import com.hyejin.space_booking.api.request.SignupBasicRequest;
+import com.hyejin.space_booking.api.response.LoginResponse;
+import com.hyejin.space_booking.api.response.UserInfoResponse;
 import com.hyejin.space_booking.common.ApiException;
 import com.hyejin.space_booking.common.ErrorCode;
 import com.hyejin.space_booking.entity.*;
@@ -48,9 +52,8 @@ public class UserService {
         final String email  = req.email() == null ? null : req.email().trim().toLowerCase();
 
         // 1) 아이디 중복체크
-        if (userRepository.existsByUserId(userId)) {
+        if (userRepository.existsByUserId(userId))
             throw new ApiException(ErrorCode.DUPLICATE_USER_ID);
-        }
 
         // 2) 이메일 소셜 연동 존재 (활성만 볼 건지 비활성 포함할 건지는 정책대로)
         userRepository.findActiveWithSnsByEmail(email).ifPresent(user -> {
@@ -58,9 +61,8 @@ public class UserService {
         });
 
         // 3) 로컬 계정 이메일 중복
-        if (userRepository.existsByEmail(email)) {
+        if (userRepository.existsByEmail(email))
             throw new ApiException(ErrorCode.DUPLICATE_EMAIL);
-        }
 
         // 4) 생성
         User user = new User();
@@ -73,6 +75,29 @@ public class UserService {
         user.setUseYn("Y");
         // user.setEmailVerified(false);
         return userRepository.save(user);
+    }
+
+    /**
+     * 일반 로그인
+     *
+     */
+    public LoginResponse basicLogin(BasicLoginRequest req) {
+        // 1) 유저 조회(활성만)
+        User user = userRepository.findUser(req.userId(), "Y")
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
+
+        // 2) 유저 소셜연동여부 조회
+        if (user.getUserSns() != null) {
+            throw new ApiException(ErrorCode.SOCIAL_ACCOUNT_LOGIN_REQ);
+        }
+        
+        // 2) 비밀번호 검증 (raw vs encoded)
+        if (!passwordEncoder.matches(req.userPw(), user.getUserPw())) {
+            throw new ApiException(ErrorCode.PW_INVALID_CREDENTIAL);
+        }
+
+        // 3) JWT 발급
+        return issueLoginResponse(user);
     }
 
     /**
@@ -105,20 +130,13 @@ public class UserService {
         // 3) 유저정보 업서트
         User user = upsertFromKakao(profile, token);
 
-        // 4) JWT 발급
-        JwtPair jwt = jwtService.issue(user.getUserKey(), "KAKAO", profile.providerUserId());
+        // 4) 공통 JWT 발급 + 응답 DTO 조립
+        LoginResponse body = issueLoginResponse(user);
 
-        // 5) 응답
+        // 5) 헤더에 access 담고, 바디는 표준 ApiResponse로
         return ResponseEntity.ok()
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.accessToken())
-                .body(Map.of(
-                        "message", "로그인 성공",
-                        "userKey", user.getUserKey(),
-                        "userId", user.getUserId(),
-                        "provider", profile.providerUserId(),
-                        "nickname", profile.nickname(),
-                        "expiresIn", jwt.accessTokenTtlSeconds()
-                ));
+                .header(HttpHeaders.AUTHORIZATION, body.getTokenType() + " " + body.getAccessToken())
+                .body(ApiResponse.success("로그인 성공", body));
     }
 
     /**
@@ -185,11 +203,42 @@ public class UserService {
 
         user.setUserSns(sns);
         return user;
-
-
-
     }
 
+    // 공통: JWT 발급 + 응답
+    private LoginResponse issueLoginResponse(User user) {
+        UserSns sns = user.getUserSns();
+
+        String provider = sns != null && sns.getProvider() != null ? sns.getProvider() : "LOCAL";
+        String providerUserId = sns != null ? sns.getProviderUserId() : null;
+
+        JwtPair jwt = jwtService.issue(
+                user.getUserKey(),
+                provider,
+                providerUserId
+        );
+
+        return LoginResponse.builder()
+                .accessToken(jwt.accessToken())
+                .refreshToken(jwt.refreshToken())
+                .tokenType("Bearer")
+                .expiresIn(jwt.accessTokenTtlSeconds())
+                .user(new UserInfoResponse(user, sns))
+                .build();
+    }
+
+
+    /**
+     * 내 정보 조회
+     */
+    public UserInfoResponse getUserInfo(Long userKey) {
+        if (userKey == null) throw new ApiException(ErrorCode.USER_NOT_FOUND);
+
+        User user = userRepository.findUserByKey(userKey) // fetch join 버전
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
+
+        return new UserInfoResponse(user, user.getUserSns());
+    }
 }
 
 

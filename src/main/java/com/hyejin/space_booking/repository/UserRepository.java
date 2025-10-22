@@ -18,6 +18,18 @@ public interface UserRepository extends JpaRepository<User,Long> {
     boolean existsByEmail(String email);
 
     /**
+     * key로 회원 조회
+     *  - UserSns 연동 정보도 함께 조회
+     */
+    @Query("""
+           select distinct u
+           from User u
+           left join fetch u.userSns s
+           where u.id = :userKey
+           """)
+    Optional<User> findUserByKey(@Param("userKey") Long userKey);
+
+    /**
      * 아이디로 회원 조회
      *    - useYn 파라미터가 있으면 조건 적용, 없으면 조건 미적용
      *    - UserSns 연동 정보도 함꼐 조회
@@ -48,6 +60,19 @@ public interface UserRepository extends JpaRepository<User,Long> {
             and u.email = :email
         """)
     Optional<User> findActiveWithSnsByEmail(@Param("email") String email);
+
+    /**
+     * 아이디, 비밀번호로 회원 조회
+     */
+    @Query("""
+       select distinct u
+       from User u
+       left join fetch u.userSns s
+       where u.userId = :userId
+         and u.userPw = :userPw
+         and u.useYn = 'Y'
+       """)
+    Optional<User> login(@Param("userId") String userId, @Param("userPw") String userPw);
 
 
 }

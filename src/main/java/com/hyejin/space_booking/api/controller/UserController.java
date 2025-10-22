@@ -1,8 +1,13 @@
 package com.hyejin.space_booking.api.controller;
 
 import com.hyejin.space_booking.api.ApiResponse;
+import com.hyejin.space_booking.api.request.BasicLoginRequest;
 import com.hyejin.space_booking.api.request.SignupBasicRequest;
+import com.hyejin.space_booking.api.response.LoginResponse;
+import com.hyejin.space_booking.api.response.UserInfoResponse;
 import com.hyejin.space_booking.entity.User;
+import com.hyejin.space_booking.entity.UserSns;
+import com.hyejin.space_booking.service.JwtService;
 import com.hyejin.space_booking.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,12 +18,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/users")
 public class UserController {
     private final UserService userService;
+    private final JwtService jwtService;
 
     /**
      * 일반 회원가입
@@ -27,6 +34,15 @@ public class UserController {
     public ResponseEntity<ApiResponse<User>> signup(@Valid @RequestBody SignupBasicRequest req) {
         User user = userService.signup(req);
         return ResponseEntity.ok(ApiResponse.success("회원가입 성공", user));
+    }
+
+    /**
+     * 일반 로그인
+     */
+    @PostMapping("/basicLogin")
+    public ResponseEntity<ApiResponse<LoginResponse>> basicLogin(@Valid @RequestBody BasicLoginRequest req) {
+        LoginResponse user = userService.basicLogin(req);
+        return ResponseEntity.ok(ApiResponse.success("로그인 성공", user));
     }
 
     /**
@@ -49,6 +65,16 @@ public class UserController {
                 @RequestParam(required = false) String state,
                 HttpServletRequest request) {
         return userService.handleKakaoCallback(code, state, request);
+    }
+
+    /**
+     * 내정보 조회
+     */
+    @PostMapping("/getMyInfo")
+    public ResponseEntity<ApiResponse<UserInfoResponse>> getMyInfo(HttpServletRequest request) {
+        Long userKey = jwtService.extractUserKey(request); // JWT에서 유저 식별
+        UserInfoResponse resp = userService.getUserInfo(userKey);
+        return ResponseEntity.ok(ApiResponse.success("내 정보 조회 성공", resp));
     }
 
 }
