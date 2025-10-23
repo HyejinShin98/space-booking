@@ -61,18 +61,5 @@ public interface UserRepository extends JpaRepository<User,Long> {
         """)
     Optional<User> findActiveWithSnsByEmail(@Param("email") String email);
 
-    /**
-     * 아이디, 비밀번호로 회원 조회
-     */
-    @Query("""
-       select distinct u
-       from User u
-       left join fetch u.userSns s
-       where u.userId = :userId
-         and u.userPw = :userPw
-         and u.useYn = 'Y'
-       """)
-    Optional<User> login(@Param("userId") String userId, @Param("userPw") String userPw);
-
 
 }

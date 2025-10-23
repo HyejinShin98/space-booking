@@ -135,7 +135,7 @@ public class UserService {
 
         // 5) 헤더에 access 담고, 바디는 표준 ApiResponse로
         return ResponseEntity.ok()
-                .header(HttpHeaders.AUTHORIZATION, body.getTokenType() + " " + body.getAccessToken())
+                .header(HttpHeaders.AUTHORIZATION, body.tokenType() + " " + body.accessToken())
                 .body(ApiResponse.success("로그인 성공", body));
     }
 
@@ -218,13 +218,12 @@ public class UserService {
                 providerUserId
         );
 
-        return LoginResponse.builder()
-                .accessToken(jwt.accessToken())
-                .refreshToken(jwt.refreshToken())
-                .tokenType("Bearer")
-                .expiresIn(jwt.accessTokenTtlSeconds())
-                .user(new UserInfoResponse(user, sns))
-                .build();
+        return LoginResponse.of(
+                jwt.accessToken(),
+                jwt.refreshToken(),
+                "Bearer",
+                jwt.accessTokenTtlSeconds(),
+                new UserInfoResponse(user, sns));
     }
 
 
@@ -234,7 +233,7 @@ public class UserService {
     public UserInfoResponse getUserInfo(Long userKey) {
         if (userKey == null) throw new ApiException(ErrorCode.USER_NOT_FOUND);
 
-        User user = userRepository.findUserByKey(userKey) // fetch join 버전
+        User user = userRepository.findUserByKey(userKey)
                 .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
 
         return new UserInfoResponse(user, user.getUserSns());

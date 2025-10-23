@@ -14,16 +14,19 @@ import java.time.LocalDateTime;
  * 로그인 성공 응답값
  *
  */
-@Builder
-@Getter
-@AllArgsConstructor
-@NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class LoginResponse {
-    private String accessToken;
-    private String refreshToken;
-    private String tokenType;
-    private long expiresIn;
-    private UserInfoResponse user;
-
+public record LoginResponse(
+        String accessToken,
+        String refreshToken,
+        String tokenType,
+        long expiresIn,
+        UserInfoResponse user
+) {
+    public static LoginResponse of(String accessToken,
+                                   String refreshToken,
+                                   String tokenType,
+                                   long expiresIn,
+                                   UserInfoResponse user) {
+        return new LoginResponse(accessToken, refreshToken, tokenType, expiresIn, user);
+    }
 }
