@@ -3,7 +3,9 @@ package com.hyejin.space_booking.service;
 import com.hyejin.space_booking.common.ApiException;
 import com.hyejin.space_booking.common.ErrorCode;
 import com.hyejin.space_booking.entity.JwtPair;
+import com.hyejin.space_booking.entity.User;
 import com.hyejin.space_booking.exception.UnauthorizedException;
+import com.hyejin.space_booking.repository.UserRepository;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -19,24 +21,36 @@ import java.util.UUID;
 
 @Service
 public class JwtService {
+
     private final Key key;
     private final long ACCESS_TOKEN_TTL;   // seconds
     private final long REFRESH_TOKEN_TTL;  // seconds
-    private final Clock clock;             // 주입해서 테스트 가능하게
+    private final Clock clock;
+
+    private final JwtParser jwtParser;     // 재사용
+    private final UserRepository userRepository;
 
     public JwtService(
             @Value("${jwt.secret}") String secretBase64,
-            @Value("${jwt.access-ttl}") long accessTokenTtlSeconds,
-            @Value("${jwt.refresh-ttl}") long refreshTokenTtlSeconds,
-            Clock clock // @Bean 으로 등록하거나 Clock.systemUTC()
+            @Value("${jwt.access-ttl}") long accessTokenTtlSec,
+            @Value("${jwt.refresh-ttl}") long refreshTokenTtlSec,
+            Clock clock,
+            UserRepository userRepository
     ) {
-        byte[] keyBytes = Decoders.BASE64.decode(secretBase64); // 최소 32 bytes
+        byte[] keyBytes = Decoders.BASE64.decode(secretBase64); // 최소 32 bytes 이상
         this.key = Keys.hmacShaKeyFor(keyBytes);
-        this.ACCESS_TOKEN_TTL = accessTokenTtlSeconds;
-        this.REFRESH_TOKEN_TTL = refreshTokenTtlSeconds;
+        this.ACCESS_TOKEN_TTL = accessTokenTtlSec;
+        this.REFRESH_TOKEN_TTL = refreshTokenTtlSec;
         this.clock = clock;
+        this.userRepository = userRepository;
+
+        this.jwtParser = Jwts.parserBuilder()
+                .setSigningKey(this.key)
+                .setAllowedClockSkewSeconds(120) // 2분 오차 허용
+                .build();
     }
 
+    /** JWT 발급 (AT/RT) */
     public JwtPair issue(Long userKey, String provider, String providerUserId) {
         Instant now = clock.instant();
 
@@ -65,29 +79,54 @@ public class JwtService {
         return new JwtPair(accessToken, refreshToken, ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL);
     }
 
+    /** Authorization 헤더 파싱 + JWT 검증 + User 조회 + 요청 범위 캐싱 */
+    public User extractUser(HttpServletRequest request) {
+        // 요청 범위 캐시
+        Object cached = request.getAttribute("AUTH_USER");
+        if (cached instanceof User u) return u;
+
+        String token = resolveBearerToken(request);
+        Claims claims = parseClaims(token);
+        Long userKey = Long.parseLong(claims.getSubject());
+
+        User user = userRepository.findUserByKey(userKey)
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
+
+        request.setAttribute("AUTH_USER", user);
+        return user;
+    }
+
+    /** 기존 시그니처가 필요하면 유지: userKey만 추출 */
     public Long extractUserKey(HttpServletRequest request) {
+        String token = resolveBearerToken(request);
+        Claims claims = parseClaims(token);
+        return Long.parseLong(claims.getSubject());
+    }
+
+    /** AT 만료시간(초) 노출: 프론트 갱신 타이밍 계산용 */
+    public long getAccessTtlSeconds() {
+        return ACCESS_TOKEN_TTL;
+    }
+
+    // =============== 내부 유틸 ===============
+
+    private String resolveBearerToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
-//        if (header == null) throw new UnauthorizedException("Authorization 헤더 없음");
-        if (header == null) throw new ApiException(ErrorCode.LOGIN_DATA_NOT_FOUND);
+        if (header == null) throw new ApiException(ErrorCode.LOGIN_DATA_NOT_FOUND); // 401
 
         String[] parts = header.trim().split("\\s+");
-        if (parts.length != 2 || !parts[0].equalsIgnoreCase("Bearer"))
+        if (parts.length != 2 || !parts[0].equalsIgnoreCase("Bearer")) {
             throw new UnauthorizedException("Authorization 스킴 오류");
+        }
+        return parts[1];
+    }
 
-        String token = parts[1];
-
+    private Claims parseClaims(String token) {
         try {
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(key)
-                    .setAllowedClockSkewSeconds(120)   // 시계 오차 허용
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-
-            return Long.parseLong(claims.getSubject());
+            return jwtParser.parseClaimsJws(token).getBody();
         } catch (ExpiredJwtException e) {
             throw new UnauthorizedException("토큰 만료", e);
-        } catch (SecurityException e) { // 서명 검증 실패 포함
+        } catch (SecurityException e) {
             throw new UnauthorizedException("서명 검증 실패", e);
         } catch (MalformedJwtException | UnsupportedJwtException | IllegalArgumentException e) {
             throw new UnauthorizedException("토큰 형식 오류", e);
