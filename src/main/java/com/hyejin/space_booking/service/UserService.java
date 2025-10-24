@@ -136,7 +136,7 @@ public class UserService {
         // 5) 헤더에 access 담고, 바디는 표준 ApiResponse로
         return ResponseEntity.ok()
                 .header(HttpHeaders.AUTHORIZATION, body.tokenType() + " " + body.accessToken())
-                .body(ApiResponse.success("로그인 성공", body));
+                .body(ApiResponse.success(body));
     }
 
     /**

@@ -33,7 +33,7 @@ public class UserController {
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<User>> signup(@Valid @RequestBody SignupBasicRequest req) {
         User user = userService.signup(req);
-        return ResponseEntity.ok(ApiResponse.success("회원가입 성공", user));
+        return ResponseEntity.ok(ApiResponse.success(user));
     }
 
     /**
@@ -42,7 +42,7 @@ public class UserController {
     @PostMapping("/basicLogin")
     public ResponseEntity<ApiResponse<LoginResponse>> basicLogin(@Valid @RequestBody BasicLoginRequest req) {
         LoginResponse user = userService.basicLogin(req);
-        return ResponseEntity.ok(ApiResponse.success("로그인 성공", user));
+        return ResponseEntity.ok(ApiResponse.success(user));
     }
 
     /**
@@ -52,7 +52,7 @@ public class UserController {
     @GetMapping("/kakaoLogin")
     public ResponseEntity<ApiResponse<Void>> kakaoLogin(HttpServletResponse response, HttpSession session) throws IOException {
         userService.kakaoLogin(response, session);
-        return ResponseEntity.ok(ApiResponse.success("카카오 로그인 리다이렉트"));
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     /**
@@ -74,7 +74,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserInfoResponse>> getMyInfo(HttpServletRequest request) {
         Long userKey = jwtService.extractUserKey(request); // JWT에서 유저 식별
         UserInfoResponse resp = userService.getUserInfo(userKey);
-        return ResponseEntity.ok(ApiResponse.success("내 정보 조회 성공", resp));
+        return ResponseEntity.ok(ApiResponse.success(resp));
     }
 
 }
