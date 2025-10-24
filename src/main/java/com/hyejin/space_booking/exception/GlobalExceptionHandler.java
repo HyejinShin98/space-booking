@@ -27,7 +27,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleEtc(Exception ex) {
+        ex.printStackTrace(); // 콘솔에 로그
         return ResponseEntity.internalServerError()
-                .body(ApiResponse.error("INTERNAL_ERROR", "서버 에러가 발생했습니다."));
+                .body(ApiResponse.error("INTERNAL_ERROR", ex.getMessage()));
     }
 }
