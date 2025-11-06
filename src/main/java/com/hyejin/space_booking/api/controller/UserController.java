@@ -39,7 +39,7 @@ public class UserController {
     /**
      * 일반 로그인
      */
-    @PostMapping("/basicLogin")
+    @PostMapping("/basic-login")
     public ResponseEntity<ApiResponse<LoginResponse>> basicLogin(@Valid @RequestBody BasicLoginRequest req) {
         LoginResponse user = userService.basicLogin(req);
         return ResponseEntity.ok(ApiResponse.success(user));
@@ -49,7 +49,7 @@ public class UserController {
      * 카카오로그인
      * 1)카카오로 리다이렉트
      */
-    @GetMapping("/kakaoLogin")
+    @GetMapping("/kakao-login")
     public ResponseEntity<ApiResponse<Void>> kakaoLogin(HttpServletResponse response, HttpSession session) throws IOException {
         userService.kakaoLogin(response, session);
         return ResponseEntity.ok(ApiResponse.success());
@@ -59,7 +59,7 @@ public class UserController {
      * 카카오로그인
      * 2)응답값
      */
-    @GetMapping("/kakaoLoginCallback")
+    @GetMapping("/kakao-login-callback")
     public ResponseEntity<?> kakaoLoginCallback(
                 @RequestParam String code,
                 @RequestParam(required = false) String state,
@@ -70,7 +70,7 @@ public class UserController {
     /**
      * 내정보 조회
      */
-    @PostMapping("/getMyInfo")
+    @PostMapping("/get-myinfo")
     public ResponseEntity<ApiResponse<UserInfoResponse>> getMyInfo(HttpServletRequest request) {
         Long userKey = jwtService.extractUserKey(request); // JWT에서 유저 식별
         UserInfoResponse resp = userService.getUserInfo(userKey);

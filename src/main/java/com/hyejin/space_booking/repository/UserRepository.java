@@ -18,8 +18,8 @@ public interface UserRepository extends JpaRepository<User,Long> {
     boolean existsByEmail(String email);
 
     /**
-     * key로 회원 조회
-     *  - UserSns 연동 정보도 함께 조회
+     * 회원 조회 (UserSns 연동 정보 있을경우 함께 조회)
+     * @param userKey
      */
     @Query("""
            select distinct u
@@ -31,8 +31,9 @@ public interface UserRepository extends JpaRepository<User,Long> {
 
     /**
      * 아이디로 회원 조회
-     *    - useYn 파라미터가 있으면 조건 적용, 없으면 조건 미적용
-     *    - UserSns 연동 정보도 함꼐 조회
+     * - UserSns 연동 정보도 함꼐 조회
+     * @param userId
+     * @param useYn : 파라미터 값 있을 경우 조건적용, 없으면 조건 미적용
      */
     @Query("""
            select distinct u
@@ -48,8 +49,9 @@ public interface UserRepository extends JpaRepository<User,Long> {
 
     /**
      * 이메일로 회원 소셜연동 정보 조회
-     *      - useYn 'Y'일 경우
-     *      - 소셜연동 정보 있는 회원만 조회
+     * - useYn 'Y'일 경우
+     * - 소셜연동 정보 있는 회원만 조회
+     * @param email
      */
     @Query("""
           select distinct u
