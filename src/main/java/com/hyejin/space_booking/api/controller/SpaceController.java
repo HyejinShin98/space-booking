@@ -1,8 +1,10 @@
 package com.hyejin.space_booking.api.controller;
 
 import com.hyejin.space_booking.api.ApiResponse;
+import com.hyejin.space_booking.api.request.SpaceInfoRequest;
 import com.hyejin.space_booking.api.request.SpaceSearchRequest;
 import com.hyejin.space_booking.api.response.PageResponse;
+import com.hyejin.space_booking.api.response.SpaceInfoResponse;
 import com.hyejin.space_booking.api.response.SpaceSearchResponse;
 import com.hyejin.space_booking.service.SpaceService;
 import jakarta.validation.Valid;
@@ -29,11 +31,11 @@ public class SpaceController {
     /**
      * 공간 상세정보 조회
      */
-    /*@PostMapping("/info")
-    public ResponseEntity<ApiResponse<SpaceInfoResponse>> info(@Valid @RequestBody SpaceInfoRequest req) {
-        SpaceInfoResponse resp = spaceService.info(req);
+    @PostMapping("/spaceInfo")
+    public ResponseEntity<ApiResponse<SpaceInfoResponse>> spaceDetail(@Valid @RequestBody SpaceInfoRequest req) {
+        SpaceInfoResponse resp = spaceService.spaceInfo(req);
         return ResponseEntity.ok(ApiResponse.success(resp));
-    }*/
+    }
 
 
 }

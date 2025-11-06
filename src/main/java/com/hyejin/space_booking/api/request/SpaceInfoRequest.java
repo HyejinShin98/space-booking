@@ -1,6 +1,8 @@
 package com.hyejin.space_booking.api.request;
 
+import jakarta.validation.constraints.NotNull;
+
 /* 공간 상세조회 항목 */
 public record SpaceInfoRequest(
-        String spaceId  // 공간 id
+        @NotNull Long spaceId
 ) {}

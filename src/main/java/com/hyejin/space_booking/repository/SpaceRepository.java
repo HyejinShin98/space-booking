@@ -1,13 +1,14 @@
 package com.hyejin.space_booking.repository;
 
-import com.hyejin.space_booking.api.request.SpaceSearchRequest;
-import com.hyejin.space_booking.api.response.SpaceSearchResponse;
+import com.hyejin.space_booking.api.response.SpaceInfoResponse;
 import com.hyejin.space_booking.entity.Space;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import java.util.Optional;
 
 public interface SpaceRepository extends JpaRepository<Space,Long> {
 
@@ -95,7 +96,7 @@ public interface SpaceRepository extends JpaRepository<Space,Long> {
           )
       """,
     nativeQuery = true)
-    Page<Row> searchSpaces(
+    Page<Row> findSpacesBySearchCondition(
             @Param("keyword") String keyword,
             @Param("option") String option,
             @Param("dayOfWeek") String dayOfWeek,
@@ -104,14 +105,47 @@ public interface SpaceRepository extends JpaRepository<Space,Long> {
             @Param("sort") String sort,
             Pageable pageable
     );
-    /*Page<SpaceSearchResponse> searchSpaces(
-            @Param("keyword") String keyword,
-            @Param("option") String option,
-            @Param("dayOfWeek") String dayOfWeek,
-            @Param("time") String time,
-            @Param("capacity") Integer capacity,
-            @Param("sort") String sort,
-            Pageable pageable
-    );*/
+
+
+    interface DetailRow {
+        Long getSpaceId();
+        String getTitle();
+        String getDescription();
+        Integer getCapacity();
+        String getContact();
+        String getAddress();
+        String getImageUrl();
+        String getTime();
+        String getRegDate();
+        Integer getMinPriceNumeric();
+        String getMinPrice();
+    }
+
+    /**
+     * spaceId로 공간 상세 조회
+     */
+    @Query(value = """
+         SELECT
+              s.space_id                                         AS spaceId,
+              s.title                                            AS title,
+              s.description                                      AS description,
+              s.capacity                                         AS capacity,
+              s.contact                                          AS contact,
+              s.address                                          AS address,
+              s.image_url                                        AS imageUrl,
+              CONCAT(CONCAT(s.open_time, ':00 ~ '), CONCAT(s.close_time, ':00')) as time,
+              DATE_FORMAT(s.reg_date,  '%Y년 %m월 %d일')          AS regDate,
+              CAST(COALESCE(MIN(ss.price), 0) AS SIGNED)       AS minPriceNumeric,
+              COALESCE(CONCAT(FORMAT(MIN(ss.price), 0), '원'), '0원') AS minPrice
+          FROM space s
+          LEFT JOIN space_slot ss
+            ON ss.space_id = s.space_id
+          WHERE 1=1
+            AND s.space_id = :spaceId
+          GROUP BY
+              s.space_id, s.title, s.description, s.capacity, s.contact,
+              s.address, s.image_url, s.open_time, s.close_time, s.reg_date
+           """, nativeQuery = true)
+    Optional<DetailRow> findSpace(@Param("spaceId") Long spaceId);
 
 }
