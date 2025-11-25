@@ -14,6 +14,7 @@ public enum ErrorCode {
     SPACE_NOT_FOUND("E2001", HttpStatus.CONFLICT, "공간 정보를 찾을 수 없습니다."),
 
 
+    REQUIRED_IS_NOT_FOUND("E0000", HttpStatus.BAD_REQUEST, "필수값이 없습니다."),
     BAD_REQUEST("E9999", HttpStatus.BAD_REQUEST, "잘못된 요청입니다.");
 
     public final String code;

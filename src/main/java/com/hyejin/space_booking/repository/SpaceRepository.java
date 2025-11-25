@@ -24,12 +24,12 @@ public interface SpaceRepository extends JpaRepository<Space,Long> {
     }
 
     /**
+     * @param keyword : title(공간명), description(설명), address(주소)
+     * @param option : A:전체, T:제목, D:설명, R:주소
+     * @param dayOfWeek : 해당 요일을 운영하는 공간이면 조회
+     * @param time : 검색한 시간이 시작시간과 종료시간 사이에 있을 경우 조회
      * 검색조건으로 공간 목록 조회
      * 결과 - 공간id, 공간제목, 공간이미지, 공간주소, 수용인원, 공간최소가격
-     * 1. keyword : title, description, address
-     * 2. option : A:전체, T:제목, D:설명, R:주소
-     * 3. day_of_week : 해당 요일을 운영하는 공간이면 출력
-     * 4. time : 검색한 시간이 시작시간과 종료시간 사이에 있을 경우 출력
      */
     @Query(value = """
       SELECT *
@@ -122,7 +122,8 @@ public interface SpaceRepository extends JpaRepository<Space,Long> {
     }
 
     /**
-     * spaceId로 공간 상세 조회
+     * 공간 상세 조회
+     * @param spaceId
      */
     @Query(value = """
          SELECT
