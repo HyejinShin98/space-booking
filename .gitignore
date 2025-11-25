@@ -1,0 +1,24 @@
+# Build outputs
+/out/
+/build/
+/target/
+
+# Gradle trash
+.gradle/
+**/*.lock
+**/*.bin
+**/*.class
+
+# Java build
+*.class
+
+# IDE
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# OS Junk
+.DS_Store
+Thumbs.db
