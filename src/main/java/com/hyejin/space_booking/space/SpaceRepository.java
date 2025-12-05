@@ -1,7 +1,5 @@
-package com.hyejin.space_booking.repository;
+package com.hyejin.space_booking.space;
 
-import com.hyejin.space_booking.api.response.SpaceInfoResponse;
-import com.hyejin.space_booking.entity.Space;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
